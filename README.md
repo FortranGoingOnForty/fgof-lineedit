@@ -30,7 +30,7 @@ Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
 - line editor, action, history, and prompt-state types
-- prompt constructor, editable buffer core, cursor movement helpers, history navigation, and action dispatch
+- prompt constructor, editable buffer core, cursor movement helpers, word-wise navigation, history navigation, and action dispatch
 - smoke-test coverage and CI wiring
 
 Still to implement:
@@ -66,6 +66,8 @@ Action constants:
 - `FGOF_LINEEDIT_ACT_DELETE_RIGHT`
 - `FGOF_LINEEDIT_ACT_MOVE_LEFT`
 - `FGOF_LINEEDIT_ACT_MOVE_RIGHT`
+- `FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT`
+- `FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT`
 - `FGOF_LINEEDIT_ACT_MOVE_HOME`
 - `FGOF_LINEEDIT_ACT_MOVE_END`
 - `FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS`
@@ -88,6 +90,8 @@ Current public procedures:
 - `init_lineedit`
 - `move_cursor_left`
 - `move_cursor_right`
+- `move_cursor_word_left`
+- `move_cursor_word_right`
 - `move_cursor_home`
 - `move_cursor_end`
 - `reset_lineedit`
