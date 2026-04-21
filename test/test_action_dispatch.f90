@@ -1,6 +1,7 @@
 program test_action_dispatch
   use fgof_lineedit, only : &
     FGOF_LINEEDIT_ACT_DELETE_LEFT, &
+    FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT, &
     FGOF_LINEEDIT_ACT_HISTORY_NEXT, &
     FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS, &
     FGOF_LINEEDIT_ACT_MOVE_HOME, &
@@ -37,6 +38,13 @@ program test_action_dispatch
   end if
   if (editor%buffer /= "ac") error stop "delete-left action should reuse delete_left semantics"
   if (editor%cursor /= 2) error stop "delete-left action should move the cursor back one column"
+
+  call set_buffer(editor, "alpha beta", 3)
+  if (.not. apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT))) then
+    error stop "delete-word-right action should delete to the next word boundary"
+  end if
+  if (editor%buffer /= "al beta") error stop "delete-word-right action should reuse word deletion semantics"
+  if (editor%cursor /= 3) error stop "delete-word-right action should keep the cursor at the deletion point"
 
   if (.not. apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_MOVE_HOME))) then
     error stop "move-home action should move the cursor when it is not already home"
