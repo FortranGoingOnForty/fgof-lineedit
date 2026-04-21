@@ -29,8 +29,8 @@ Initial scaffold is in place.
 Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
-- line editor and prompt-state types
-- prompt constructor, editable buffer core, cursor movement helpers, and history navigation
+- line editor, action, history, and prompt-state types
+- prompt constructor, editable buffer core, cursor movement helpers, history navigation, and action dispatch
 - smoke-test coverage and CI wiring
 
 Still to implement:
@@ -53,16 +53,32 @@ Primary modules:
 
 Public types:
 
+- `lineedit_action`
 - `lineedit_state`
 - `prompt_spec`
 - `history_entry`
 
+Action constants:
+
+- `FGOF_LINEEDIT_ACT_NONE`
+- `FGOF_LINEEDIT_ACT_INSERT`
+- `FGOF_LINEEDIT_ACT_DELETE_LEFT`
+- `FGOF_LINEEDIT_ACT_DELETE_RIGHT`
+- `FGOF_LINEEDIT_ACT_MOVE_LEFT`
+- `FGOF_LINEEDIT_ACT_MOVE_RIGHT`
+- `FGOF_LINEEDIT_ACT_MOVE_HOME`
+- `FGOF_LINEEDIT_ACT_MOVE_END`
+- `FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS`
+- `FGOF_LINEEDIT_ACT_HISTORY_NEXT`
+
 Current public procedures:
 
 - `add_history_entry`
+- `apply_action`
 - `buffer_length`
 - `set_buffer`
 - `insert_text`
+- `insert_action`
 - `delete_left`
 - `delete_right`
 - `default_prompt`
@@ -75,19 +91,29 @@ Current public procedures:
 - `move_cursor_home`
 - `move_cursor_end`
 - `reset_lineedit`
+- `simple_action`
 
 ## Quick Start
 
 ```fortran
 program demo_lineedit
-  use fgof_lineedit, only : add_history_entry, default_prompt, history_previous, init_lineedit, lineedit_state
+  use fgof_lineedit, only : &
+    FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS, &
+    add_history_entry, &
+    apply_action, &
+    default_prompt, &
+    init_lineedit, &
+    insert_action, &
+    lineedit_state, &
+    simple_action
   implicit none
 
   type(lineedit_state) :: editor
 
   call init_lineedit(editor, default_prompt("> "))
+  call apply_action(editor, insert_action("draft"))
   call add_history_entry(editor, "build")
-  call history_previous(editor)
+  call apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS))
   print "(A)", editor%buffer
 end program demo_lineedit
 ```
