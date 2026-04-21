@@ -30,12 +30,12 @@ Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
 - line editor and prompt-state types
-- prompt constructor, editable buffer core, and cursor movement helpers
+- prompt constructor, editable buffer core, cursor movement helpers, and history navigation
 - smoke-test coverage and CI wiring
 
 Still to implement:
 
-- history and completion hooks
+- completion hooks
 - terminal integration and redraw behavior
 
 ## Why Use It
@@ -55,15 +55,20 @@ Public types:
 
 - `lineedit_state`
 - `prompt_spec`
+- `history_entry`
 
 Current public procedures:
 
+- `add_history_entry`
 - `buffer_length`
 - `set_buffer`
 - `insert_text`
 - `delete_left`
 - `delete_right`
 - `default_prompt`
+- `history_count`
+- `history_previous`
+- `history_next`
 - `init_lineedit`
 - `move_cursor_left`
 - `move_cursor_right`
@@ -75,14 +80,14 @@ Current public procedures:
 
 ```fortran
 program demo_lineedit
-  use fgof_lineedit, only : default_prompt, init_lineedit, insert_text, lineedit_state, move_cursor_left
+  use fgof_lineedit, only : add_history_entry, default_prompt, history_previous, init_lineedit, lineedit_state
   implicit none
 
   type(lineedit_state) :: editor
 
   call init_lineedit(editor, default_prompt("> "))
-  call insert_text(editor, "help")
-  call move_cursor_left(editor)
+  call add_history_entry(editor, "build")
+  call history_previous(editor)
   print "(A)", editor%buffer
 end program demo_lineedit
 ```
