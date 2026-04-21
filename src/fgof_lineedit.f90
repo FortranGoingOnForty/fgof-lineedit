@@ -105,6 +105,9 @@ contains
     character(len=:), allocatable, intent(out) :: line
     logical, intent(in), optional :: store_history
     logical :: should_store
+    type(history_entry), allocatable :: new_history(:)
+    integer :: count
+    integer :: i
 
     call normalize_lineedit(editor)
     line = editor%buffer
@@ -115,7 +118,15 @@ contains
       should_store = len_trim(line) > 0
     end if
 
-    if (should_store) call add_history_entry(editor, line)
+    if (should_store) then
+      count = history_count(editor)
+      allocate(new_history(count + 1))
+      do i = 1, count
+        new_history(i)%text = editor%history(i)%text
+      end do
+      new_history(count + 1)%text = line
+      call move_alloc(new_history, editor%history)
+    end if
 
     editor%buffer = ""
     editor%cursor = 1
