@@ -30,13 +30,13 @@ Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
 - line editor, action, completion, history, and prompt-state types
-- prompt constructor, editable buffer core, cursor movement helpers, word-wise navigation, history navigation, action dispatch, and completion helpers
+- prompt constructor, editable buffer core, cursor movement and deletion helpers, word-wise navigation, history navigation, action dispatch, completion helpers, and completion-menu state
 - smoke-test coverage and CI wiring
 
 Still to implement:
 
 - terminal integration and redraw behavior
-- completion menus and callback wiring
+- richer completion menus and callback policies
 
 ## Why Use It
 
@@ -53,6 +53,7 @@ Primary modules:
 
 Public types:
 
+- `completion_item`
 - `completion_span`
 - `lineedit_action`
 - `lineedit_state`
@@ -65,6 +66,8 @@ Action constants:
 - `FGOF_LINEEDIT_ACT_INSERT`
 - `FGOF_LINEEDIT_ACT_DELETE_LEFT`
 - `FGOF_LINEEDIT_ACT_DELETE_RIGHT`
+- `FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT`
+- `FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT`
 - `FGOF_LINEEDIT_ACT_MOVE_LEFT`
 - `FGOF_LINEEDIT_ACT_MOVE_RIGHT`
 - `FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT`
@@ -78,10 +81,16 @@ Current public procedures:
 
 - `add_history_entry`
 - `apply_completion`
+- `apply_selected_completion`
 - `apply_action`
 - `buffer_length`
+- `clear_completion_menu`
+- `completion_count`
 - `completion_span_at_cursor`
+- `delete_word_left`
+- `delete_word_right`
 - `set_buffer`
+- `set_completion_items`
 - `insert_text`
 - `insert_action`
 - `delete_left`
@@ -97,7 +106,11 @@ Current public procedures:
 - `move_cursor_word_right`
 - `move_cursor_home`
 - `move_cursor_end`
+- `lineedit_completion_provider`
+- `refresh_completion_menu`
 - `reset_lineedit`
+- `select_next_completion`
+- `select_previous_completion`
 - `simple_action`
 
 ## Quick Start
