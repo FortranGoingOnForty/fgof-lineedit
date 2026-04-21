@@ -1,5 +1,7 @@
 module fgof_lineedit
   use fgof_lineedit_types, only : &
+    FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT, &
+    FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT, &
     FGOF_LINEEDIT_ACT_DELETE_LEFT, &
     FGOF_LINEEDIT_ACT_DELETE_RIGHT, &
     FGOF_LINEEDIT_ACT_HISTORY_NEXT, &
@@ -12,6 +14,7 @@ module fgof_lineedit
     FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT, &
     FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT, &
     FGOF_LINEEDIT_ACT_NONE, &
+    completion_item, &
     completion_span, &
     history_entry, &
     lineedit_action, &
@@ -22,13 +25,21 @@ module fgof_lineedit
 
   public :: add_history_entry
   public :: apply_completion
+  public :: apply_selected_completion
   public :: apply_action
   public :: buffer_length
+  public :: clear_completion_menu
+  public :: completion_count
+  public :: completion_item
   public :: completion_span
   public :: completion_span_at_cursor
   public :: delete_left
+  public :: delete_word_left
+  public :: delete_word_right
   public :: delete_right
   public :: default_prompt
+  public :: FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT
+  public :: FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT
   public :: FGOF_LINEEDIT_ACT_DELETE_LEFT
   public :: FGOF_LINEEDIT_ACT_DELETE_RIGHT
   public :: FGOF_LINEEDIT_ACT_HISTORY_NEXT
@@ -47,6 +58,7 @@ module fgof_lineedit
   public :: init_lineedit
   public :: insert_action
   public :: insert_text
+  public :: lineedit_completion_provider
   public :: lineedit_action
   public :: lineedit_state
   public :: move_cursor_end
@@ -56,9 +68,22 @@ module fgof_lineedit
   public :: move_cursor_word_left
   public :: move_cursor_word_right
   public :: prompt_spec
+  public :: refresh_completion_menu
   public :: reset_lineedit
+  public :: select_next_completion
+  public :: select_previous_completion
   public :: set_buffer
+  public :: set_completion_items
   public :: simple_action
+
+  abstract interface
+    subroutine lineedit_completion_provider(editor, span, items)
+      import :: completion_item, completion_span, lineedit_state
+      type(lineedit_state), intent(in) :: editor
+      type(completion_span), intent(in) :: span
+      type(completion_item), allocatable, intent(out) :: items(:)
+    end subroutine lineedit_completion_provider
+  end interface
 
 contains
 
@@ -86,6 +111,8 @@ contains
     editor%browsing_history = .false.
     editor%stashed_buffer = ""
     editor%stashed_cursor = 1
+    editor%completion_index = 0
+    editor%completion_visible = .false.
     call normalize_lineedit(editor)
   end subroutine init_lineedit
 
@@ -97,6 +124,7 @@ contains
     editor%cursor = 1
     editor%active = .false.
     call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
   end subroutine reset_lineedit
 
   integer function buffer_length(editor) result(length)
@@ -115,6 +143,7 @@ contains
     integer, intent(in), optional :: cursor
 
     call normalize_lineedit(editor)
+    call clear_completion_menu(editor)
     call assign_buffer(editor, text, cursor, clear_history=.true.)
   end subroutine set_buffer
 
@@ -127,6 +156,7 @@ contains
     call normalize_lineedit(editor)
     if (len(text) == 0) return
     call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
 
     insert_at = editor%cursor
     old_length = len(editor%buffer)
@@ -158,6 +188,7 @@ contains
     end if
 
     call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
 
     delete_at = editor%cursor - 1
     if (old_length == 1) then
@@ -188,6 +219,7 @@ contains
     end if
 
     call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
 
     delete_at = editor%cursor
     if (old_length == 1) then
@@ -204,6 +236,50 @@ contains
     changed = .true.
   end function delete_right
 
+  logical function delete_word_left(editor) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: delete_start
+
+    call normalize_lineedit(editor)
+    if (editor%cursor <= 1) then
+      changed = .false.
+      return
+    end if
+
+    delete_start = previous_delete_cursor(editor%buffer, editor%cursor)
+    if (delete_start >= editor%cursor) then
+      changed = .false.
+      return
+    end if
+
+    call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
+    call delete_span(editor, delete_start, editor%cursor)
+    changed = .true.
+  end function delete_word_left
+
+  logical function delete_word_right(editor) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: delete_end
+
+    call normalize_lineedit(editor)
+    if (editor%cursor > len(editor%buffer)) then
+      changed = .false.
+      return
+    end if
+
+    delete_end = next_delete_cursor(editor%buffer, editor%cursor)
+    if (delete_end <= editor%cursor) then
+      changed = .false.
+      return
+    end if
+
+    call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
+    call delete_span(editor, editor%cursor, delete_end)
+    changed = .true.
+  end function delete_word_right
+
   logical function move_cursor_left(editor) result(moved)
     type(lineedit_state), intent(inout) :: editor
 
@@ -214,6 +290,7 @@ contains
     end if
 
     editor%cursor = editor%cursor - 1
+    call clear_completion_menu(editor)
     moved = .true.
   end function move_cursor_left
 
@@ -227,6 +304,7 @@ contains
     end if
 
     editor%cursor = editor%cursor + 1
+    call clear_completion_menu(editor)
     moved = .true.
   end function move_cursor_right
 
@@ -242,6 +320,7 @@ contains
     end if
 
     editor%cursor = new_cursor
+    call clear_completion_menu(editor)
     moved = .true.
   end function move_cursor_word_left
 
@@ -257,6 +336,7 @@ contains
     end if
 
     editor%cursor = new_cursor
+    call clear_completion_menu(editor)
     moved = .true.
   end function move_cursor_word_right
 
@@ -265,6 +345,7 @@ contains
 
     call normalize_lineedit(editor)
     editor%cursor = 1
+    call clear_completion_menu(editor)
   end subroutine move_cursor_home
 
   subroutine move_cursor_end(editor)
@@ -272,6 +353,7 @@ contains
 
     call normalize_lineedit(editor)
     editor%cursor = len(editor%buffer) + 1
+    call clear_completion_menu(editor)
   end subroutine move_cursor_end
 
   function simple_action(kind) result(action)
@@ -309,6 +391,10 @@ contains
         call insert_text(editor, action%text)
         changed = editor%buffer /= old_buffer .or. editor%cursor /= old_cursor
       end if
+    case (FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT)
+      changed = delete_word_left(editor)
+    case (FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT)
+      changed = delete_word_right(editor)
     case (FGOF_LINEEDIT_ACT_DELETE_LEFT)
       changed = delete_left(editor)
     case (FGOF_LINEEDIT_ACT_DELETE_RIGHT)
@@ -398,11 +484,126 @@ contains
     end if
 
     call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
     editor%buffer = new_buffer
     editor%cursor = span%start_cursor + len(replacement)
     call clamp_cursor(editor)
     changed = .true.
   end function apply_completion
+
+  integer function completion_count(editor) result(count)
+    type(lineedit_state), intent(in) :: editor
+
+    if (allocated(editor%completion_items)) then
+      count = size(editor%completion_items)
+    else
+      count = 0
+    end if
+  end function completion_count
+
+  subroutine clear_completion_menu(editor)
+    type(lineedit_state), intent(inout) :: editor
+
+    if (allocated(editor%completion_items)) deallocate(editor%completion_items)
+    editor%completion_index = 0
+    editor%completion_visible = .false.
+  end subroutine clear_completion_menu
+
+  subroutine set_completion_items(editor, items)
+    type(lineedit_state), intent(inout) :: editor
+    type(completion_item), intent(in) :: items(:)
+    integer :: i
+
+    call clear_completion_menu(editor)
+    if (size(items) == 0) return
+
+    editor%completion_items = items
+    do i = 1, size(editor%completion_items)
+      if (.not. allocated(editor%completion_items(i)%text)) then
+        if (allocated(editor%completion_items(i)%display)) then
+          editor%completion_items(i)%text = editor%completion_items(i)%display
+        else
+          editor%completion_items(i)%text = ""
+        end if
+      end if
+      if (.not. allocated(editor%completion_items(i)%display)) then
+        editor%completion_items(i)%display = editor%completion_items(i)%text
+      end if
+    end do
+
+    editor%completion_index = 1
+    editor%completion_visible = .true.
+  end subroutine set_completion_items
+
+  subroutine refresh_completion_menu(editor, provider)
+    type(lineedit_state), intent(inout) :: editor
+    procedure(lineedit_completion_provider) :: provider
+    type(completion_span) :: span
+    type(completion_item), allocatable :: items(:)
+
+    call normalize_lineedit(editor)
+    span = completion_span_at_cursor(editor)
+    call provider(editor, span, items)
+
+    if (.not. allocated(items)) then
+      call clear_completion_menu(editor)
+      return
+    end if
+
+    call set_completion_items(editor, items)
+  end subroutine refresh_completion_menu
+
+  logical function select_next_completion(editor) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: count
+
+    count = completion_count(editor)
+    if (count <= 1) then
+      changed = .false.
+      return
+    end if
+
+    editor%completion_index = mod(editor%completion_index, count) + 1
+    editor%completion_visible = .true.
+    changed = .true.
+  end function select_next_completion
+
+  logical function select_previous_completion(editor) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: count
+
+    count = completion_count(editor)
+    if (count <= 1) then
+      changed = .false.
+      return
+    end if
+
+    editor%completion_index = mod(editor%completion_index + count - 2, count) + 1
+    editor%completion_visible = .true.
+    changed = .true.
+  end function select_previous_completion
+
+  logical function apply_selected_completion(editor) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: count
+    character(len=:), allocatable :: replacement
+
+    count = completion_count(editor)
+    if (count == 0) then
+      changed = .false.
+      return
+    end if
+
+    if (editor%completion_index < 1 .or. editor%completion_index > count) then
+      call clear_completion_menu(editor)
+      changed = .false.
+      return
+    end if
+
+    replacement = editor%completion_items(editor%completion_index)%text
+    changed = apply_completion(editor, replacement)
+    call clear_completion_menu(editor)
+  end function apply_selected_completion
 
   integer function history_count(editor) result(count)
     type(lineedit_state), intent(in) :: editor
@@ -458,6 +659,7 @@ contains
       return
     end if
 
+    call clear_completion_menu(editor)
     call assign_buffer(editor, editor%history(editor%history_index)%text, len(editor%history(editor%history_index)%text) + 1, &
       clear_history=.false.)
     changed = .true.
@@ -482,12 +684,14 @@ contains
 
     if (editor%history_index < count) then
       editor%history_index = editor%history_index + 1
+      call clear_completion_menu(editor)
       call assign_buffer(editor, editor%history(editor%history_index)%text, len(editor%history(editor%history_index)%text) + 1, &
         clear_history=.false.)
       changed = .true.
       return
     end if
 
+    call clear_completion_menu(editor)
     call assign_buffer(editor, editor%stashed_buffer, editor%stashed_cursor, clear_history=.false.)
     call clear_history_navigation(editor)
     changed = .true.
@@ -518,6 +722,30 @@ contains
     call clamp_cursor(editor)
     if (clear_history) call clear_history_navigation(editor)
   end subroutine assign_buffer
+
+  subroutine delete_span(editor, start_cursor, end_cursor)
+    type(lineedit_state), intent(inout) :: editor
+    integer, intent(in) :: start_cursor
+    integer, intent(in) :: end_cursor
+    character(len=:), allocatable :: before
+    character(len=:), allocatable :: after
+
+    if (start_cursor > 1) then
+      before = editor%buffer(:start_cursor - 1)
+    else
+      before = ""
+    end if
+
+    if (end_cursor <= len(editor%buffer)) then
+      after = editor%buffer(end_cursor:)
+    else
+      after = ""
+    end if
+
+    editor%buffer = before // after
+    editor%cursor = start_cursor
+    call clamp_cursor(editor)
+  end subroutine delete_span
 
   subroutine clear_history_navigation(editor)
     type(lineedit_state), intent(inout) :: editor
@@ -586,6 +814,45 @@ contains
 
     separator = char == " " .or. char == achar(9)
   end function is_word_separator
+
+  integer function previous_delete_cursor(buffer, cursor) result(new_cursor)
+    character(len=*), intent(in) :: buffer
+    integer, intent(in) :: cursor
+    integer :: idx
+
+    idx = min(max(cursor - 1, 0), len(buffer))
+    do while (idx >= 1 .and. is_word_separator(buffer(idx:idx)))
+      idx = idx - 1
+    end do
+    do while (idx >= 1 .and. .not. is_word_separator(buffer(idx:idx)))
+      idx = idx - 1
+    end do
+
+    new_cursor = idx + 1
+  end function previous_delete_cursor
+
+  integer function next_delete_cursor(buffer, cursor) result(new_cursor)
+    character(len=*), intent(in) :: buffer
+    integer, intent(in) :: cursor
+    integer :: idx
+    integer :: limit
+
+    limit = len(buffer)
+    idx = max(cursor, 1)
+    if (idx > limit) then
+      new_cursor = limit + 1
+      return
+    end if
+
+    do while (idx <= limit .and. is_word_separator(buffer(idx:idx)))
+      idx = idx + 1
+    end do
+    do while (idx <= limit .and. .not. is_word_separator(buffer(idx:idx)))
+      idx = idx + 1
+    end do
+
+    new_cursor = idx
+  end function next_delete_cursor
 
   subroutine word_bounds_at_cursor(buffer, cursor, start_cursor, end_cursor)
     character(len=*), intent(in) :: buffer

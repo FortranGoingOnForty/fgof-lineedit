@@ -6,6 +6,8 @@ module fgof_lineedit_types
   public :: FGOF_LINEEDIT_ACT_INSERT
   public :: FGOF_LINEEDIT_ACT_DELETE_LEFT
   public :: FGOF_LINEEDIT_ACT_DELETE_RIGHT
+  public :: FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT
+  public :: FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT
   public :: FGOF_LINEEDIT_ACT_MOVE_LEFT
   public :: FGOF_LINEEDIT_ACT_MOVE_RIGHT
   public :: FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT
@@ -14,6 +16,7 @@ module fgof_lineedit_types
   public :: FGOF_LINEEDIT_ACT_MOVE_END
   public :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS
   public :: FGOF_LINEEDIT_ACT_HISTORY_NEXT
+  public :: completion_item
   public :: completion_span
   public :: history_entry
   public :: lineedit_action
@@ -24,6 +27,8 @@ module fgof_lineedit_types
   integer, parameter :: FGOF_LINEEDIT_ACT_INSERT = 1
   integer, parameter :: FGOF_LINEEDIT_ACT_DELETE_LEFT = 2
   integer, parameter :: FGOF_LINEEDIT_ACT_DELETE_RIGHT = 3
+  integer, parameter :: FGOF_LINEEDIT_ACT_DELETE_WORD_LEFT = 12
+  integer, parameter :: FGOF_LINEEDIT_ACT_DELETE_WORD_RIGHT = 13
   integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_LEFT = 4
   integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_RIGHT = 5
   integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT = 6
@@ -36,6 +41,11 @@ module fgof_lineedit_types
   type :: prompt_spec
     character(len=:), allocatable :: text
   end type prompt_spec
+
+  type :: completion_item
+    character(len=:), allocatable :: text
+    character(len=:), allocatable :: display
+  end type completion_item
 
   type :: completion_span
     integer :: start_cursor = 1
@@ -63,6 +73,9 @@ module fgof_lineedit_types
     logical :: browsing_history = .false.
     character(len=:), allocatable :: stashed_buffer
     integer :: stashed_cursor = 1
+    type(completion_item), allocatable :: completion_items(:)
+    integer :: completion_index = 0
+    logical :: completion_visible = .false.
   end type lineedit_state
 
 end module fgof_lineedit_types
