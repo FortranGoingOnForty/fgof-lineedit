@@ -30,7 +30,7 @@ Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
 - line editor, action, completion, history, prompt, and render-state types
-- prompt constructor, editable buffer core, cursor movement and deletion helpers, word-wise navigation, history navigation, action dispatch, completion helpers, completion-menu state, and render snapshots
+- prompt constructor, editable buffer core, cursor movement and deletion helpers, word-wise navigation, history navigation, action dispatch, completion helpers, completion-menu state, accept helpers, and render snapshots
 - smoke-test coverage and CI wiring
 
 Still to implement:
@@ -81,6 +81,7 @@ Action constants:
 
 Current public procedures:
 
+- `accept_line`
 - `add_history_entry`
 - `apply_completion`
 - `apply_selected_completion`
