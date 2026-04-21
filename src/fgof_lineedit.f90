@@ -9,6 +9,8 @@ module fgof_lineedit
     FGOF_LINEEDIT_ACT_MOVE_HOME, &
     FGOF_LINEEDIT_ACT_MOVE_LEFT, &
     FGOF_LINEEDIT_ACT_MOVE_RIGHT, &
+    FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT, &
+    FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT, &
     FGOF_LINEEDIT_ACT_NONE, &
     history_entry, &
     lineedit_action, &
@@ -32,6 +34,8 @@ module fgof_lineedit
   public :: FGOF_LINEEDIT_ACT_MOVE_HOME
   public :: FGOF_LINEEDIT_ACT_MOVE_LEFT
   public :: FGOF_LINEEDIT_ACT_MOVE_RIGHT
+  public :: FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT
+  public :: FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT
   public :: FGOF_LINEEDIT_ACT_NONE
   public :: history_count
   public :: history_next
@@ -45,6 +49,8 @@ module fgof_lineedit
   public :: move_cursor_home
   public :: move_cursor_left
   public :: move_cursor_right
+  public :: move_cursor_word_left
+  public :: move_cursor_word_right
   public :: prompt_spec
   public :: reset_lineedit
   public :: set_buffer
@@ -220,6 +226,36 @@ contains
     moved = .true.
   end function move_cursor_right
 
+  logical function move_cursor_word_left(editor) result(moved)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: new_cursor
+
+    call normalize_lineedit(editor)
+    new_cursor = previous_word_cursor(editor%buffer, editor%cursor)
+    if (new_cursor == editor%cursor) then
+      moved = .false.
+      return
+    end if
+
+    editor%cursor = new_cursor
+    moved = .true.
+  end function move_cursor_word_left
+
+  logical function move_cursor_word_right(editor) result(moved)
+    type(lineedit_state), intent(inout) :: editor
+    integer :: new_cursor
+
+    call normalize_lineedit(editor)
+    new_cursor = next_word_cursor(editor%buffer, editor%cursor)
+    if (new_cursor == editor%cursor) then
+      moved = .false.
+      return
+    end if
+
+    editor%cursor = new_cursor
+    moved = .true.
+  end function move_cursor_word_right
+
   subroutine move_cursor_home(editor)
     type(lineedit_state), intent(inout) :: editor
 
@@ -277,6 +313,10 @@ contains
       changed = move_cursor_left(editor)
     case (FGOF_LINEEDIT_ACT_MOVE_RIGHT)
       changed = move_cursor_right(editor)
+    case (FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT)
+      changed = move_cursor_word_left(editor)
+    case (FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT)
+      changed = move_cursor_word_right(editor)
     case (FGOF_LINEEDIT_ACT_MOVE_HOME)
       call move_cursor_home(editor)
       changed = editor%cursor /= old_cursor
@@ -429,5 +469,50 @@ contains
     if (editor%cursor < 1) editor%cursor = 1
     if (editor%cursor > max_cursor) editor%cursor = max_cursor
   end subroutine clamp_cursor
+
+  integer function previous_word_cursor(buffer, cursor) result(new_cursor)
+    character(len=*), intent(in) :: buffer
+    integer, intent(in) :: cursor
+    integer :: idx
+
+    idx = min(max(cursor - 1, 0), len(buffer))
+    do while (idx >= 1 .and. is_word_separator(buffer(idx:idx)))
+      idx = idx - 1
+    end do
+    do while (idx >= 1 .and. .not. is_word_separator(buffer(idx:idx)))
+      idx = idx - 1
+    end do
+
+    new_cursor = idx + 1
+  end function previous_word_cursor
+
+  integer function next_word_cursor(buffer, cursor) result(new_cursor)
+    character(len=*), intent(in) :: buffer
+    integer, intent(in) :: cursor
+    integer :: idx
+    integer :: limit
+
+    limit = len(buffer)
+    idx = max(cursor, 1)
+    if (idx > limit) then
+      new_cursor = limit + 1
+      return
+    end if
+
+    do while (idx <= limit .and. .not. is_word_separator(buffer(idx:idx)))
+      idx = idx + 1
+    end do
+    do while (idx <= limit .and. is_word_separator(buffer(idx:idx)))
+      idx = idx + 1
+    end do
+
+    new_cursor = idx
+  end function next_word_cursor
+
+  logical function is_word_separator(char) result(separator)
+    character(len=1), intent(in) :: char
+
+    separator = char == " " .or. char == achar(9)
+  end function is_word_separator
 
 end module fgof_lineedit

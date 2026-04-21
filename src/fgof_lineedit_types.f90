@@ -8,6 +8,8 @@ module fgof_lineedit_types
   public :: FGOF_LINEEDIT_ACT_DELETE_RIGHT
   public :: FGOF_LINEEDIT_ACT_MOVE_LEFT
   public :: FGOF_LINEEDIT_ACT_MOVE_RIGHT
+  public :: FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT
+  public :: FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT
   public :: FGOF_LINEEDIT_ACT_MOVE_HOME
   public :: FGOF_LINEEDIT_ACT_MOVE_END
   public :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS
@@ -23,10 +25,12 @@ module fgof_lineedit_types
   integer, parameter :: FGOF_LINEEDIT_ACT_DELETE_RIGHT = 3
   integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_LEFT = 4
   integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_RIGHT = 5
-  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_HOME = 6
-  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_END = 7
-  integer, parameter :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS = 8
-  integer, parameter :: FGOF_LINEEDIT_ACT_HISTORY_NEXT = 9
+  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT = 6
+  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT = 7
+  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_HOME = 8
+  integer, parameter :: FGOF_LINEEDIT_ACT_MOVE_END = 9
+  integer, parameter :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS = 10
+  integer, parameter :: FGOF_LINEEDIT_ACT_HISTORY_NEXT = 11
 
   type :: prompt_spec
     character(len=:), allocatable :: text
