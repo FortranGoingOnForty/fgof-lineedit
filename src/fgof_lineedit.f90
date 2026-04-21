@@ -12,6 +12,7 @@ module fgof_lineedit
     FGOF_LINEEDIT_ACT_MOVE_WORD_LEFT, &
     FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT, &
     FGOF_LINEEDIT_ACT_NONE, &
+    completion_span, &
     history_entry, &
     lineedit_action, &
     lineedit_state, &
@@ -20,8 +21,11 @@ module fgof_lineedit
   private
 
   public :: add_history_entry
+  public :: apply_completion
   public :: apply_action
   public :: buffer_length
+  public :: completion_span
+  public :: completion_span_at_cursor
   public :: delete_left
   public :: delete_right
   public :: default_prompt
@@ -332,6 +336,74 @@ contains
     end select
   end function apply_action
 
+  function completion_span_at_cursor(editor) result(span)
+    type(lineedit_state), intent(in) :: editor
+    type(completion_span) :: span
+    integer :: start_cursor
+    integer :: end_cursor
+    integer :: prefix_end
+    character(len=:), allocatable :: buffer
+
+    if (allocated(editor%buffer)) then
+      buffer = editor%buffer
+    else
+      buffer = ""
+    end if
+
+    call word_bounds_at_cursor(buffer, editor%cursor, start_cursor, end_cursor)
+    span%start_cursor = start_cursor
+    span%end_cursor = end_cursor
+
+    if (end_cursor > start_cursor) then
+      span%text = buffer(start_cursor:end_cursor - 1)
+    else
+      span%text = ""
+    end if
+
+    prefix_end = min(max(editor%cursor - 1, 0), end_cursor - 1)
+    if (prefix_end >= start_cursor) then
+      span%prefix = buffer(start_cursor:prefix_end)
+    else
+      span%prefix = ""
+    end if
+  end function completion_span_at_cursor
+
+  logical function apply_completion(editor, replacement) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    character(len=*), intent(in) :: replacement
+    type(completion_span) :: span
+    character(len=:), allocatable :: before
+    character(len=:), allocatable :: after
+    character(len=:), allocatable :: new_buffer
+
+    call normalize_lineedit(editor)
+    span = completion_span_at_cursor(editor)
+
+    if (span%start_cursor > 1) then
+      before = editor%buffer(:span%start_cursor - 1)
+    else
+      before = ""
+    end if
+
+    if (span%end_cursor <= len(editor%buffer)) then
+      after = editor%buffer(span%end_cursor:)
+    else
+      after = ""
+    end if
+
+    new_buffer = before // replacement // after
+    if (new_buffer == editor%buffer .and. editor%cursor == span%start_cursor + len(replacement)) then
+      changed = .false.
+      return
+    end if
+
+    call clear_history_navigation(editor)
+    editor%buffer = new_buffer
+    editor%cursor = span%start_cursor + len(replacement)
+    call clamp_cursor(editor)
+    changed = .true.
+  end function apply_completion
+
   integer function history_count(editor) result(count)
     type(lineedit_state), intent(in) :: editor
 
@@ -514,5 +586,44 @@ contains
 
     separator = char == " " .or. char == achar(9)
   end function is_word_separator
+
+  subroutine word_bounds_at_cursor(buffer, cursor, start_cursor, end_cursor)
+    character(len=*), intent(in) :: buffer
+    integer, intent(in) :: cursor
+    integer, intent(out) :: start_cursor
+    integer, intent(out) :: end_cursor
+    integer :: idx
+    integer :: limit
+    integer :: position
+
+    limit = len(buffer)
+    position = min(max(cursor, 1), limit + 1)
+
+    if (limit == 0) then
+      start_cursor = 1
+      end_cursor = 1
+      return
+    end if
+
+    if (position > 1 .and. .not. is_word_separator(buffer(position - 1:position - 1))) then
+      idx = position - 1
+    else if (position <= limit .and. .not. is_word_separator(buffer(position:position))) then
+      idx = position
+    else
+      start_cursor = position
+      end_cursor = position
+      return
+    end if
+
+    start_cursor = idx
+    do while (start_cursor > 1 .and. .not. is_word_separator(buffer(start_cursor - 1:start_cursor - 1)))
+      start_cursor = start_cursor - 1
+    end do
+
+    end_cursor = idx + 1
+    do while (end_cursor <= limit .and. .not. is_word_separator(buffer(end_cursor:end_cursor)))
+      end_cursor = end_cursor + 1
+    end do
+  end subroutine word_bounds_at_cursor
 
 end module fgof_lineedit

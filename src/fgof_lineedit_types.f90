@@ -14,6 +14,7 @@ module fgof_lineedit_types
   public :: FGOF_LINEEDIT_ACT_MOVE_END
   public :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS
   public :: FGOF_LINEEDIT_ACT_HISTORY_NEXT
+  public :: completion_span
   public :: history_entry
   public :: lineedit_action
   public :: lineedit_state
@@ -35,6 +36,13 @@ module fgof_lineedit_types
   type :: prompt_spec
     character(len=:), allocatable :: text
   end type prompt_spec
+
+  type :: completion_span
+    integer :: start_cursor = 1
+    integer :: end_cursor = 1
+    character(len=:), allocatable :: prefix
+    character(len=:), allocatable :: text
+  end type completion_span
 
   type :: history_entry
     character(len=:), allocatable :: text
