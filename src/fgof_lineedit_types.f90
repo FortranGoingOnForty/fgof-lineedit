@@ -20,6 +20,8 @@ module fgof_lineedit_types
   public :: completion_span
   public :: history_entry
   public :: lineedit_action
+  public :: lineedit_render_completion
+  public :: lineedit_render_state
   public :: lineedit_state
   public :: prompt_spec
 
@@ -57,6 +59,20 @@ module fgof_lineedit_types
   type :: history_entry
     character(len=:), allocatable :: text
   end type history_entry
+
+  type :: lineedit_render_completion
+    character(len=:), allocatable :: text
+    logical :: selected = .false.
+  end type lineedit_render_completion
+
+  type :: lineedit_render_state
+    character(len=:), allocatable :: prompt
+    character(len=:), allocatable :: buffer
+    character(len=:), allocatable :: line
+    integer :: cursor_column = 1
+    type(lineedit_render_completion), allocatable :: completions(:)
+    logical :: completion_visible = .false.
+  end type lineedit_render_state
 
   type :: lineedit_action
     integer :: kind = FGOF_LINEEDIT_ACT_NONE

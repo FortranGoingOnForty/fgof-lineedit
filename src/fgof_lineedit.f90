@@ -18,6 +18,8 @@ module fgof_lineedit
     completion_span, &
     history_entry, &
     lineedit_action, &
+    lineedit_render_completion, &
+    lineedit_render_state, &
     lineedit_state, &
     prompt_spec
   implicit none
@@ -60,6 +62,8 @@ module fgof_lineedit
   public :: insert_text
   public :: lineedit_completion_provider
   public :: lineedit_action
+  public :: lineedit_render_completion
+  public :: lineedit_render_state
   public :: lineedit_state
   public :: move_cursor_end
   public :: move_cursor_home
@@ -69,6 +73,7 @@ module fgof_lineedit
   public :: move_cursor_word_right
   public :: prompt_spec
   public :: refresh_completion_menu
+  public :: render_lineedit
   public :: reset_lineedit
   public :: select_next_completion
   public :: select_previous_completion
@@ -604,6 +609,44 @@ contains
     changed = apply_completion(editor, replacement)
     call clear_completion_menu(editor)
   end function apply_selected_completion
+
+  function render_lineedit(editor) result(view)
+    type(lineedit_state), intent(in) :: editor
+    type(lineedit_render_state) :: view
+    integer :: i
+    integer :: count
+
+    if (allocated(editor%prompt%text)) then
+      view%prompt = editor%prompt%text
+    else
+      view%prompt = ""
+    end if
+
+    if (allocated(editor%buffer)) then
+      view%buffer = editor%buffer
+    else
+      view%buffer = ""
+    end if
+
+    view%line = view%prompt // view%buffer
+    view%cursor_column = len(view%prompt) + max(editor%cursor, 1)
+
+    count = completion_count(editor)
+    if (count > 0) then
+      allocate(view%completions(count))
+      do i = 1, count
+        if (allocated(editor%completion_items(i)%display)) then
+          view%completions(i)%text = editor%completion_items(i)%display
+        else if (allocated(editor%completion_items(i)%text)) then
+          view%completions(i)%text = editor%completion_items(i)%text
+        else
+          view%completions(i)%text = ""
+        end if
+        view%completions(i)%selected = editor%completion_index == i
+      end do
+    end if
+    view%completion_visible = editor%completion_visible .and. count > 0
+  end function render_lineedit
 
   integer function history_count(editor) result(count)
     type(lineedit_state), intent(in) :: editor
