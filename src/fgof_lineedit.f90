@@ -1,18 +1,45 @@
 module fgof_lineedit
-  use fgof_lineedit_types, only : history_entry, lineedit_state, prompt_spec
+  use fgof_lineedit_types, only : &
+    FGOF_LINEEDIT_ACT_DELETE_LEFT, &
+    FGOF_LINEEDIT_ACT_DELETE_RIGHT, &
+    FGOF_LINEEDIT_ACT_HISTORY_NEXT, &
+    FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS, &
+    FGOF_LINEEDIT_ACT_INSERT, &
+    FGOF_LINEEDIT_ACT_MOVE_END, &
+    FGOF_LINEEDIT_ACT_MOVE_HOME, &
+    FGOF_LINEEDIT_ACT_MOVE_LEFT, &
+    FGOF_LINEEDIT_ACT_MOVE_RIGHT, &
+    FGOF_LINEEDIT_ACT_NONE, &
+    history_entry, &
+    lineedit_action, &
+    lineedit_state, &
+    prompt_spec
   implicit none
   private
 
   public :: add_history_entry
+  public :: apply_action
   public :: buffer_length
   public :: delete_left
   public :: delete_right
   public :: default_prompt
+  public :: FGOF_LINEEDIT_ACT_DELETE_LEFT
+  public :: FGOF_LINEEDIT_ACT_DELETE_RIGHT
+  public :: FGOF_LINEEDIT_ACT_HISTORY_NEXT
+  public :: FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS
+  public :: FGOF_LINEEDIT_ACT_INSERT
+  public :: FGOF_LINEEDIT_ACT_MOVE_END
+  public :: FGOF_LINEEDIT_ACT_MOVE_HOME
+  public :: FGOF_LINEEDIT_ACT_MOVE_LEFT
+  public :: FGOF_LINEEDIT_ACT_MOVE_RIGHT
+  public :: FGOF_LINEEDIT_ACT_NONE
   public :: history_count
   public :: history_next
   public :: history_previous
   public :: init_lineedit
+  public :: insert_action
   public :: insert_text
+  public :: lineedit_action
   public :: lineedit_state
   public :: move_cursor_end
   public :: move_cursor_home
@@ -21,6 +48,7 @@ module fgof_lineedit
   public :: prompt_spec
   public :: reset_lineedit
   public :: set_buffer
+  public :: simple_action
 
 contains
 
@@ -205,6 +233,64 @@ contains
     call normalize_lineedit(editor)
     editor%cursor = len(editor%buffer) + 1
   end subroutine move_cursor_end
+
+  function simple_action(kind) result(action)
+    integer, intent(in) :: kind
+    type(lineedit_action) :: action
+
+    action%kind = kind
+  end function simple_action
+
+  function insert_action(text) result(action)
+    character(len=*), intent(in) :: text
+    type(lineedit_action) :: action
+
+    action%kind = FGOF_LINEEDIT_ACT_INSERT
+    action%text = text
+  end function insert_action
+
+  logical function apply_action(editor, action) result(changed)
+    type(lineedit_state), intent(inout) :: editor
+    type(lineedit_action), intent(in) :: action
+    character(len=:), allocatable :: old_buffer
+    integer :: old_cursor
+
+    call normalize_lineedit(editor)
+    old_buffer = editor%buffer
+    old_cursor = editor%cursor
+
+    select case (action%kind)
+    case (FGOF_LINEEDIT_ACT_NONE)
+      changed = .false.
+    case (FGOF_LINEEDIT_ACT_INSERT)
+      if (.not. allocated(action%text)) then
+        changed = .false.
+      else
+        call insert_text(editor, action%text)
+        changed = editor%buffer /= old_buffer .or. editor%cursor /= old_cursor
+      end if
+    case (FGOF_LINEEDIT_ACT_DELETE_LEFT)
+      changed = delete_left(editor)
+    case (FGOF_LINEEDIT_ACT_DELETE_RIGHT)
+      changed = delete_right(editor)
+    case (FGOF_LINEEDIT_ACT_MOVE_LEFT)
+      changed = move_cursor_left(editor)
+    case (FGOF_LINEEDIT_ACT_MOVE_RIGHT)
+      changed = move_cursor_right(editor)
+    case (FGOF_LINEEDIT_ACT_MOVE_HOME)
+      call move_cursor_home(editor)
+      changed = editor%cursor /= old_cursor
+    case (FGOF_LINEEDIT_ACT_MOVE_END)
+      call move_cursor_end(editor)
+      changed = editor%cursor /= old_cursor
+    case (FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS)
+      changed = history_previous(editor)
+    case (FGOF_LINEEDIT_ACT_HISTORY_NEXT)
+      changed = history_next(editor)
+    case default
+      changed = .false.
+    end select
+  end function apply_action
 
   integer function history_count(editor) result(count)
     type(lineedit_state), intent(in) :: editor
