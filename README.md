@@ -160,6 +160,10 @@ That is the baseline verification command locally and in CI.
 - focused on editing state and library ergonomics, not full shell implementation
 - terminal-mode control should stay in a future companion package
 
+## Notes
+
+- `lineedit_state` is a public Fortran type, so callers can mutate fields directly. The helper procedures are the safer path when you want cursor, history, completion, and render-state invariants to stay aligned.
+
 ## License
 
 MIT
