@@ -5,6 +5,7 @@ program test_action_dispatch
     FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS, &
     FGOF_LINEEDIT_ACT_MOVE_HOME, &
     FGOF_LINEEDIT_ACT_MOVE_LEFT, &
+    FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT, &
     add_history_entry, &
     apply_action, &
     default_prompt, &
@@ -44,6 +45,12 @@ program test_action_dispatch
   if (apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_MOVE_HOME))) then
     error stop "move-home action should report no change when already home"
   end if
+
+  call set_buffer(editor, "alpha  beta", 1)
+  if (.not. apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_MOVE_WORD_RIGHT))) then
+    error stop "word-right action should move to the next word boundary"
+  end if
+  if (editor%cursor /= 8) error stop "word-right action should land on the next word start"
 
   action = simple_action(0)
   if (apply_action(editor, action)) error stop "none action should report no change"
