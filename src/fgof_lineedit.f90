@@ -25,6 +25,7 @@ module fgof_lineedit
   implicit none
   private
 
+  public :: accept_line
   public :: add_history_entry
   public :: apply_completion
   public :: apply_selected_completion
@@ -98,6 +99,29 @@ contains
 
     prompt%text = text
   end function default_prompt
+
+  subroutine accept_line(editor, line, store_history)
+    type(lineedit_state), intent(inout) :: editor
+    character(len=:), allocatable, intent(out) :: line
+    logical, intent(in), optional :: store_history
+    logical :: should_store
+
+    call normalize_lineedit(editor)
+    line = editor%buffer
+
+    if (present(store_history)) then
+      should_store = store_history
+    else
+      should_store = len_trim(line) > 0
+    end if
+
+    if (should_store) call add_history_entry(editor, line)
+
+    editor%buffer = ""
+    editor%cursor = 1
+    call clear_history_navigation(editor)
+    call clear_completion_menu(editor)
+  end subroutine accept_line
 
   subroutine init_lineedit(editor, prompt)
     type(lineedit_state), intent(out) :: editor
