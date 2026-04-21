@@ -30,10 +30,14 @@ program test_accept_line
   if (line /= "") error stop "accept_line should return an empty line when the buffer is empty"
   if (history_count(editor) /= 1) error stop "accept_line should not store empty lines by default"
 
+  call accept_line(editor, line, store_history=.true.)
+  if (line /= "") error stop "accept_line should still return the empty line when history storage is forced"
+  if (history_count(editor) /= 2) error stop "accept_line should store blank lines when store_history=.true."
+
   call set_buffer(editor, "scratch", 8)
   call accept_line(editor, line, store_history=.false.)
   if (line /= "scratch") error stop "accept_line should still return the buffer when history storage is disabled"
-  if (history_count(editor) /= 1) error stop "accept_line should honor store_history=.false."
+  if (history_count(editor) /= 2) error stop "accept_line should honor store_history=.false."
 
   call add_history_entry(editor, "echo one")
   call add_history_entry(editor, "echo two")
@@ -46,7 +50,7 @@ program test_accept_line
   if (completion_count(editor) /= 0) error stop "accept_line should clear transient completion state"
   if (editor%completion_visible) error stop "accept_line should hide the completion menu"
   if (history_next(editor)) error stop "accept_line should clear transient history-navigation state"
-  if (history_count(editor) /= 4) error stop "accept_line should add accepted recalled lines to history by default"
+  if (history_count(editor) /= 5) error stop "accept_line should add accepted recalled lines to history by default"
 
 contains
 
