@@ -29,14 +29,14 @@ Initial scaffold is in place.
 Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
-- line editor, action, history, and prompt-state types
-- prompt constructor, editable buffer core, cursor movement helpers, word-wise navigation, history navigation, and action dispatch
+- line editor, action, completion, history, and prompt-state types
+- prompt constructor, editable buffer core, cursor movement helpers, word-wise navigation, history navigation, action dispatch, and completion helpers
 - smoke-test coverage and CI wiring
 
 Still to implement:
 
-- completion hooks
 - terminal integration and redraw behavior
+- completion menus and callback wiring
 
 ## Why Use It
 
@@ -53,6 +53,7 @@ Primary modules:
 
 Public types:
 
+- `completion_span`
 - `lineedit_action`
 - `lineedit_state`
 - `prompt_spec`
@@ -76,8 +77,10 @@ Action constants:
 Current public procedures:
 
 - `add_history_entry`
+- `apply_completion`
 - `apply_action`
 - `buffer_length`
+- `completion_span_at_cursor`
 - `set_buffer`
 - `insert_text`
 - `insert_action`
@@ -102,22 +105,23 @@ Current public procedures:
 ```fortran
 program demo_lineedit
   use fgof_lineedit, only : &
-    FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS, &
-    add_history_entry, &
-    apply_action, &
+    apply_completion, &
+    completion_span, &
+    completion_span_at_cursor, &
     default_prompt, &
     init_lineedit, &
-    insert_action, &
     lineedit_state, &
-    simple_action
+    set_buffer
   implicit none
 
   type(lineedit_state) :: editor
+  type(completion_span) :: span
 
   call init_lineedit(editor, default_prompt("> "))
-  call apply_action(editor, insert_action("draft"))
-  call add_history_entry(editor, "build")
-  call apply_action(editor, simple_action(FGOF_LINEEDIT_ACT_HISTORY_PREVIOUS))
+  call set_buffer(editor, "bu", 3)
+  span = completion_span_at_cursor(editor)
+  print "(A)", span%prefix
+  call apply_completion(editor, "build")
   print "(A)", editor%buffer
 end program demo_lineedit
 ```
