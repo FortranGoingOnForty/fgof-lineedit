@@ -29,13 +29,13 @@ Initial scaffold is in place.
 Implemented today:
 
 - public `fgof_lineedit` and `fgof_lineedit_types` modules
-- line editor, action, completion, history, and prompt-state types
-- prompt constructor, editable buffer core, cursor movement and deletion helpers, word-wise navigation, history navigation, action dispatch, completion helpers, and completion-menu state
+- line editor, action, completion, history, prompt, and render-state types
+- prompt constructor, editable buffer core, cursor movement and deletion helpers, word-wise navigation, history navigation, action dispatch, completion helpers, completion-menu state, and render snapshots
 - smoke-test coverage and CI wiring
 
 Still to implement:
 
-- terminal integration and redraw behavior
+- terminal integration and redraw policy
 - richer completion menus and callback policies
 
 ## Why Use It
@@ -56,6 +56,8 @@ Public types:
 - `completion_item`
 - `completion_span`
 - `lineedit_action`
+- `lineedit_render_completion`
+- `lineedit_render_state`
 - `lineedit_state`
 - `prompt_spec`
 - `history_entry`
@@ -107,6 +109,7 @@ Current public procedures:
 - `move_cursor_home`
 - `move_cursor_end`
 - `lineedit_completion_provider`
+- `render_lineedit`
 - `refresh_completion_menu`
 - `reset_lineedit`
 - `select_next_completion`
@@ -118,24 +121,22 @@ Current public procedures:
 ```fortran
 program demo_lineedit
   use fgof_lineedit, only : &
-    apply_completion, &
-    completion_span, &
-    completion_span_at_cursor, &
     default_prompt, &
     init_lineedit, &
+    lineedit_render_state, &
     lineedit_state, &
+    render_lineedit, &
     set_buffer
   implicit none
 
   type(lineedit_state) :: editor
-  type(completion_span) :: span
+  type(lineedit_render_state) :: view
 
   call init_lineedit(editor, default_prompt("> "))
-  call set_buffer(editor, "bu", 3)
-  span = completion_span_at_cursor(editor)
-  print "(A)", span%prefix
-  call apply_completion(editor, "build")
-  print "(A)", editor%buffer
+  call set_buffer(editor, "build", 3)
+  view = render_lineedit(editor)
+  print "(A)", view%line
+  print "(I0)", view%cursor_column
 end program demo_lineedit
 ```
 
